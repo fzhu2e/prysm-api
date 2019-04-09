@@ -22,4 +22,11 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
     ],
+    install_requires=[
+        'fbm',
+        'rpy2',
+        'p2k',
+        'tqdm',
+        'pathos',
+    ],
 )
