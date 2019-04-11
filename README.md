@@ -17,9 +17,49 @@ Simply
 ```bash
 pip install prysm-api
 ```
-and then you are able to
+
+To use VS-Lite, in `R`
+```bash
+install.packages("devtools")
+devtools::install_github("fzhu2e/VSLiteR")
+```
+
+
+## Usage examples
+
++ Calling VS-Lite
+
 ```python
 import prysm
+
+pseudo_value, pseudo_time = prysm.forward(
+    'prysm.vslite',                 # psm name
+    lat_obs, lon_obs,               # lat/lon of the target location
+    lat, lon, time,                 # dimension variables of the environmentals
+    {                               # environmental variables:
+        'tas': tas,                 # surface air temperature in (time, lat, lon) [K]
+        'pr': pr,                   # precipitation rate in (time, lat, lon) [kg/m2/s]
+    },
+    T1=8, T2=23, M1=0.01, M2=0.05,  # PSM specific parameters
+)
+```
+
++ Calling the PSM for ice core d18O
+
+```python
+import prysm
+
+pseudo_value, pseudo_time = prysm.forward(
+    'prysm.ice.d18O',               # psm name
+    lat_obs, lon_obs,               # lat/lon of the target location
+    lat, lon, time,                 # dimension variables of the environmentals
+    {                               # environmental variables:
+        'tas': tas,                 # surface air temperature in (time, lat, lon) [K]
+        'pr': pr,                   # precipitation rate in (time, lat, lon) [kg/m2/s]
+        'psl': psl,                 # sea-level pressure in (time, lat, lon) [Pa]
+        'd18Opr': d18Opr,           # precipitation d18O in (time, lat, lon) [permil]
+    },
+)
 ```
 
 ## References
