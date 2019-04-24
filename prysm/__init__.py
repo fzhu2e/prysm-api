@@ -11,7 +11,6 @@ from . import speleo
 import p2k
 import numpy as np
 import os
-import pandas as pd
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
@@ -59,8 +58,10 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
     prior_vars_dict.update(prior_vars)
 
     psm_params_dict = {
+        # general
+        'annualize': True,
+
         # for coral d18O
-        'annualize_coral': True,
         'species': 'default',
         'b1': 0.3007062,
         'b2': 0.2619054,
@@ -72,11 +73,21 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'nproc': 8,
 
         # for vslite
-        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
         'T1': 8,
         'T2': 23,
         'M1': 0.01,
         'M2': 0.05,
+        'normalize': False,
+        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
+
+        # for linear
+        'slope': np.nan,
+        'intercept': np.nan,
+
+        # for bilinear
+        'slope_temperature': np.nan,
+        'slope_moisture': np.nan,
+        'intercept': np.nan,
     }
     psm_params_dict.update(psm_params)
 
@@ -89,8 +100,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         sst = prior_vars_dict['sst']
         sss = prior_vars_dict['sss']
         d18Osw = prior_vars_dict['d18Osw']
-
-        annualize_coral = psm_params_dict['annualize_coral']
 
         if d18Ocoral is None:
             species = psm_params_dict['species']
@@ -114,7 +123,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
             pseudo_value[pseudo_value>1e5] = np.nan  # replace missing values with nan
 
-        if annualize_coral:
+        if psm_params_dict['annualize']:
             pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
         else:
             pseudo_time = time_model
@@ -166,6 +175,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         T2 = psm_params_dict['T2']
         M1 = psm_params_dict['M1']
         M2 = psm_params_dict['M2']
+        normalize = psm_params_dict['normalize']
         Rlib_path = psm_params_dict['Rlib_path']
         if verbose:
             print(f'PRYSM >>> Using R libs from: {Rlib_path}')
@@ -186,9 +196,51 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         pseudo_value = tree.vslite(
             syear, eyear, phi, tas_sub, pr_sub,
-            Rlib_path=Rlib_path, T1=T1, T2=T2, M1=M1, M2=M2
+            Rlib_path=Rlib_path, T1=T1, T2=T2, M1=M1, M2=M2,
+            normalize=normalize,
         )
         pseudo_time = np.linspace(syear, eyear, nyr)
+
+        return pseudo_value, pseudo_time
+
+    def run_linear_psm():
+        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs, mode='latlon')
+        if verbose:
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
+
+        tas = prior_vars_dict['tas']
+        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+
+        slope = psm_params_dict['slope']
+        intercept = psm_params_dict['intercept']
+        pseudo_value = slope*tas_sub + intercept
+
+        if psm_params_dict['annualize']:
+            pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
+        else:
+            pseudo_time = time_model
+
+        return pseudo_value, pseudo_time
+
+    def run_bilinear_psm():
+        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs, mode='latlon')
+        if verbose:
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
+
+        tas = prior_vars_dict['tas']
+        pr = prior_vars_dict['pr']
+        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
+
+        slope_temperature = psm_params_dict['slope_temperature']
+        slope_moisture = psm_params_dict['slope_moisture']
+        intercept = psm_params_dict['intercept']
+        pseudo_value = slope_temperature*tas_sub + slope_moisture*pr_sub + intercept
+
+        if psm_params_dict['annualize']:
+            pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
+        else:
+            pseudo_time = time_model
 
         return pseudo_value, pseudo_time
 
@@ -199,6 +251,8 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'prysm.coral.d18O': run_psm_for_coral_d18O,
         'prysm.ice.d18O': run_psm_for_ice_d18O,
         'prysm.vslite': run_psm_for_tree_trw,
+        'linear': run_linear_psm,
+        'bilinear': run_bilinear_psm,
     }
 
     pseudo_value, pseudo_time = psm_func[psm_name]()
