@@ -98,9 +98,24 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
             print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f})')
 
     def run_psm_for_coral_d18O():
-        sst = prior_vars_dict['sst'] - 273.15  # convert to degC
+        if np.max(prior_vars_dict['sst']) > 200:
+            sst = prior_vars_dict['sst'] - 273.15  # convert to degC
+        else:
+            sst = prior_vars_dict['sst']
+
+        sst_sub = sst[:, lat_ind, lon_ind]
+
         sss = prior_vars_dict['sss']
+        if sss is not None:
+            sss_sub = sss[:, lat_ind, lon_ind]
+        else:
+            sss_sub = None
+
         d18Osw = prior_vars_dict['d18Osw']
+        if d18Osw is not None:
+            d18Osw_sub = d18Osw[:, lat_ind, lon_ind]
+        else:
+            d18Osw_sub = None
 
         species = psm_params_dict['species']
         b1 = psm_params_dict['b1']
@@ -109,8 +124,8 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         b4 = psm_params_dict['b4']
         b5 = psm_params_dict['b5']
 
-        pseudo_value = coral.pseudocoral(lat_obs, lon_obs, sst, sss=sss,
-                                         d18O=d18Osw, species=species,
+        pseudo_value = coral.pseudocoral(lat_obs, lon_obs, sst_sub, sss=sss_sub,
+                                         d18O=d18Osw_sub, species=species,
                                          b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
 
         if psm_params_dict['annualize']:
@@ -231,6 +246,11 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
 
     pseudo_value, pseudo_time = psm_func[psm_name]()
+    if verbose:
+        mean_value = np.mean(pseudo_value)
+        std_value = np.std(pseudo_value)
+        print(f'PRYSM >>> shape: {np.shape(pseudo_value)}')
+        print(f'PRYSM >>> mean: {mean_value:.2f}; std: {std_value:.2f}')
 
     return pseudo_value, pseudo_time
 
