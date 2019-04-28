@@ -50,7 +50,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'pr': None,
         'psl': None,
         'd18Opr': None,
-        'd18Ocoral': None,
         'd18Osw': None,
         'sst': None,
         'sss': None,
@@ -91,37 +90,28 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
     }
     psm_params_dict.update(psm_params)
 
-    def run_psm_for_coral_d18O():
-        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-        if verbose:
+    lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
+    if verbose:
+        if len(np.shape(lat_model)) == 1:
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
+        elif len(np.shape(lat_model)) == 2:
             print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f})')
 
-        d18Ocoral = prior_vars_dict['d18Ocoral']
+    def run_psm_for_coral_d18O():
         sst = prior_vars_dict['sst'] - 273.15  # convert to degC
         sss = prior_vars_dict['sss']
         d18Osw = prior_vars_dict['d18Osw']
 
-        if d18Ocoral is None:
-            species = psm_params_dict['species']
-            b1 = psm_params_dict['b1']
-            b2 = psm_params_dict['b2']
-            b3 = psm_params_dict['b3']
-            b4 = psm_params_dict['b4']
-            b5 = psm_params_dict['b5']
+        species = psm_params_dict['species']
+        b1 = psm_params_dict['b1']
+        b2 = psm_params_dict['b2']
+        b3 = psm_params_dict['b3']
+        b4 = psm_params_dict['b4']
+        b5 = psm_params_dict['b5']
 
-            pseudo_value = coral.pseudocoral(lat_obs, lon_obs, sst, sss=sss,
-                                             d18O=d18Osw, species=species,
-                                             b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
-
-        else:
-            pseudo_value = np.asarray(d18Ocoral[:, lat_ind, lon_ind])
-            pseudo_value[pseudo_value>1e5] = np.nan  # replace missing values with nan
-            while np.all(np.isnan(pseudo_value)):
-                for lat_fix in [0, -1, 1, -2, 2, -3, 3]:
-                    for lon_fix in [0, -1, 1, -2, 2, -3, 3]:
-                        pseudo_value = np.asarray(d18Ocoral[:, lat_ind+lat_fix, lon_ind+lon_fix])
-
-            pseudo_value[pseudo_value>1e5] = np.nan  # replace missing values with nan
+        pseudo_value = coral.pseudocoral(lat_obs, lon_obs, sst, sss=sss,
+                                         d18O=d18Osw, species=species,
+                                         b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
 
         if psm_params_dict['annualize']:
             pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
@@ -140,10 +130,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
             raise TypeError
 
         nproc = psm_params_dict['nproc']
-
-        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-        if verbose:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
@@ -181,10 +167,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
             print(f'PRYSM >>> Using R libs from: {Rlib_path}')
             print(f'PRYSM >>> T1={T1:.3f}, T2={T2:.3f}, M1={M1:.3f}, M2={M2:.3f}')
 
-        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-        if verbose:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
-
         syear, eyear = int(np.floor(time_model[0])), int(np.floor(time_model[-1]))  # start and end year
         nyr = eyear - syear + 1
         phi = lat_obs
@@ -204,10 +186,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         return pseudo_value, pseudo_time
 
     def run_linear_psm():
-        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-        if verbose:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
-
         tas = prior_vars_dict['tas']
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
 
@@ -223,10 +201,6 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         return pseudo_value, pseudo_time
 
     def run_bilinear_psm():
-        lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-        if verbose:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
-
         tas = prior_vars_dict['tas']
         pr = prior_vars_dict['pr']
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
@@ -254,6 +228,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'linear': run_linear_psm,
         'bilinear': run_bilinear_psm,
     }
+
 
     pseudo_value, pseudo_time = psm_func[psm_name]()
 
