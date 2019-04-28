@@ -11,10 +11,11 @@ from . import speleo
 import p2k
 import numpy as np
 import os
+import itertools
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
-            prior_vars, verbose=False, **psm_params):
+            prior_vars, search_dist=3, verbose=False, **psm_params):
 
     ''' Forward environmental variables to proxy variables
 
@@ -45,75 +46,32 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pseudo_time (1-D array): the time axis of the pseudoproxy timeseries
 
     '''
-    prior_vars_dict = {
-        'tas': None,
-        'pr': None,
-        'psl': None,
-        'd18Opr': None,
-        'd18Osw': None,
-        'sst': None,
-        'sss': None,
-    }
-    prior_vars_dict.update(prior_vars)
-
-    psm_params_dict = {
-        # general
-        'annualize': True,
-
-        # for coral d18O
-        'species': 'default',
-        'b1': 0.3007062,
-        'b2': 0.2619054,
-        'b3': 0.436509,
-        'b4': 0.1552032,
-        'b5': 0.15,
-
-        # for ice d18O
-        'nproc': 8,
-
-        # for vslite
-        'T1': 8,
-        'T2': 23,
-        'M1': 0.01,
-        'M2': 0.05,
-        'normalize': False,
-        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
-
-        # for linear
-        'slope': np.nan,
-        'intercept': np.nan,
-
-        # for bilinear
-        'slope_temperature': np.nan,
-        'slope_moisture': np.nan,
-        'intercept': np.nan,
-    }
-    psm_params_dict.update(psm_params)
-
-    lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
-    if verbose:
-        if len(np.shape(lat_model)) == 1:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
-        elif len(np.shape(lat_model)) == 2:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f})')
-
     def run_psm_for_coral_d18O():
         if np.max(prior_vars_dict['sst']) > 200:
-            sst = prior_vars_dict['sst'] - 273.15  # convert to degC
+            sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
         else:
-            sst = prior_vars_dict['sst']
+            sst = np.asarray(prior_vars_dict['sst'])
 
-        sst_sub = sst[:, lat_ind, lon_ind]
+        sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
+        if np.all(np.isnan(sst_sub)):
+            print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
+            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=search_dist)
 
         sss = prior_vars_dict['sss']
         if sss is not None:
-            sss_sub = sss[:, lat_ind, lon_ind]
+            sss_sub = np.asarray(sss[:, lat_ind, lon_ind])
+            if np.all(np.isnan(sss_sub)):
+                print(f'PRYSM >>> sss all nan; searching for nearest not nan ...')
+                sss_sub = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=search_dist)
         else:
             sss_sub = None
 
         d18Osw = prior_vars_dict['d18Osw']
         if d18Osw is not None:
-            d18Osw_sub = d18Osw[:, lat_ind, lon_ind]
+            d18Osw_sub = np.asarray(d18Osw[:, lat_ind, lon_ind])
+            if np.all(np.isnan(d18Osw_sub)):
+                print(f'PRYSM >>> d18Osw all nan; searching for nearest not nan ...')
+                d18Osw_sub = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=search_dist)
         else:
             d18Osw_sub = None
 
@@ -233,8 +191,63 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         return pseudo_value, pseudo_time
 
+    # run PRYSM
     if verbose:
         print(f'PRYSM >>> forward with {psm_name} ...')
+
+    prior_vars_dict = {
+        'tas': None,
+        'pr': None,
+        'psl': None,
+        'd18Opr': None,
+        'd18Osw': None,
+        'sst': None,
+        'sss': None,
+    }
+    prior_vars_dict.update(prior_vars)
+
+    psm_params_dict = {
+        # general
+        'annualize': True,
+        'search_dist': 3,
+
+        # for coral d18O
+        'species': 'default',
+        'b1': 0.3007062,
+        'b2': 0.2619054,
+        'b3': 0.436509,
+        'b4': 0.1552032,
+        'b5': 0.15,
+
+        # for ice d18O
+        'nproc': 8,
+
+        # for vslite
+        'T1': 8,
+        'T2': 23,
+        'M1': 0.01,
+        'M2': 0.05,
+        'normalize': False,
+        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
+
+        # for linear
+        'slope': np.nan,
+        'intercept': np.nan,
+
+        # for bilinear
+        'slope_temperature': np.nan,
+        'slope_moisture': np.nan,
+        'intercept': np.nan,
+    }
+    psm_params_dict.update(psm_params)
+
+    lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
+
+    if verbose:
+        if len(np.shape(lat_model)) == 1:
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
+        elif len(np.shape(lat_model)) == 2:
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f})')
 
     psm_func = {
         'prysm.coral.d18O': run_psm_for_coral_d18O,
@@ -244,8 +257,8 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'bilinear': run_bilinear_psm,
     }
 
-
     pseudo_value, pseudo_time = psm_func[psm_name]()
+
     if verbose:
         mean_value = np.mean(pseudo_value)
         std_value = np.std(pseudo_value)
@@ -253,6 +266,32 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         print(f'PRYSM >>> mean: {mean_value:.2f}; std: {std_value:.2f}')
 
     return pseudo_value, pseudo_time
+
+
+def search_nearest_not_nan(field, lat_ind, lon_ind, distance=3):
+    fix_sum = []
+    lat_fix_list = []
+    lon_fix_list = []
+    for lat_fix, lon_fix in itertools.product(np.arange(-distance, distance+1), np.arange(-distance, distance+1)):
+        lat_fix_list.append(lat_fix)
+        lon_fix_list.append(lon_fix)
+        fix_sum.append(np.abs(lat_fix)+np.abs(lon_fix))
+
+    lat_fix_list = np.asarray(lat_fix_list)
+    lon_fix_list = np.asarray(lon_fix_list)
+
+    sort_i = np.argsort(fix_sum)
+
+    for lat_fix, lon_fix in zip(lat_fix_list[sort_i], lon_fix_list[sort_i]):
+        target = np.asarray(field[:, lat_ind+lat_fix, lon_ind+lon_fix])
+        if np.all(np.isnan(target)):
+            continue
+        else:
+            print(f'PRYSM >>> Found not nan with (lat_fix, lon_fix): ({lat_fix}, {lon_fix})')
+            return target
+
+    print(f'PRYSM >>> Fail to find value not nan!')
+    return np.nan
 
 
 def calibrate_vslite(T, P, phi, RW, nsamp=1000,
