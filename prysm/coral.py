@@ -6,7 +6,7 @@
 # Modified 11_17_2015 <sylvia_dee@brown.edu>
 #====================================================================
 
-def pseudocoral(lat, lon, SST, SSS, d18O=None, species="default",
+def pseudocoral(lat, lon, sst, sss=None, d18O=None, species="default",
                 b1=0.3007062, b2=0.2619054, b3=0.436509, b4=0.1552032, b5=0.15):
 
     """
@@ -115,9 +115,9 @@ def pseudocoral(lat, lon, SST, SSS, d18O=None, species="default",
 # Form an array of pseudocoral data
 
     if d18O is None:
-        coral = a*SST+b*SSS
+        coral = a*sst+b*sss
     else:
-        coral = a*SST + d18O
+        coral = a*sst + d18O
 
 #====================================================================
 
