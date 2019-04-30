@@ -15,7 +15,7 @@ import itertools
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
-            prior_vars, search_dist=3, verbose=False, **psm_params):
+            prior_vars, verbose=False, **psm_params):
 
     ''' Forward environmental variables to proxy variables
 
@@ -55,14 +55,14 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
-            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=search_dist)
+            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
 
         sss = prior_vars_dict['sss']
         if sss is not None:
             sss_sub = np.asarray(sss[:, lat_ind, lon_ind])
             if np.all(np.isnan(sss_sub)):
                 print(f'PRYSM >>> sss all nan; searching for nearest not nan ...')
-                sss_sub = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=search_dist)
+                sss_sub = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
         else:
             sss_sub = None
 
@@ -71,7 +71,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
             d18Osw_sub = np.asarray(d18Osw[:, lat_ind, lon_ind])
             if np.all(np.isnan(d18Osw_sub)):
                 print(f'PRYSM >>> d18Osw all nan; searching for nearest not nan ...')
-                d18Osw_sub = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=search_dist)
+                d18Osw_sub = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
         else:
             d18Osw_sub = None
 
@@ -86,7 +86,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
                                          d18O=d18Osw_sub, species=species,
                                          b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
 
-        if psm_params_dict['annualize']:
+        if psm_params_dict['seasonality'] == list(range(1, 13)):
             pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
         else:
             pseudo_time = time_model
@@ -166,7 +166,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         intercept = psm_params_dict['intercept']
         pseudo_value = slope*tas_sub + intercept
 
-        if psm_params_dict['annualize']:
+        if psm_params_dict['seasonality'] == list(range(1, 13)):
             pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
         else:
             pseudo_time = time_model
@@ -184,7 +184,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         intercept = psm_params_dict['intercept']
         pseudo_value = slope_temperature*tas_sub + slope_moisture*pr_sub + intercept
 
-        if psm_params_dict['annualize']:
+        if psm_params_dict['seasonality'] == list(range(1, 13)):
             pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
         else:
             pseudo_time = time_model
@@ -208,7 +208,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
     psm_params_dict = {
         # general
-        'annualize': True,
+        'seasonality': list(range(1, 13)),
         'search_dist': 3,
 
         # for coral d18O
