@@ -7,6 +7,7 @@ Currently, it supports PSMs listed below:
 + Ice-core d18O
 + Tree-ring width with [VSLite](https://github.com/suztolwinskiward/VSLiteR)
 + Tree-ring cellulose
++ MXD
 + Coral d18O
 + Speleothem
 + Varve thickness

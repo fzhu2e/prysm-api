@@ -8,10 +8,11 @@ from . import tree
 from . import coral
 from . import lake
 from . import speleo
-import p2k
 import numpy as np
 import os
 import itertools
+from LMRt import utils
+import xarray as xr
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
@@ -30,7 +31,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         psm_name (str): options are `coral_d18O`, `ice_d18O`, `tree_trw`
         lat_obs, lon_obs (float): the location of the proxy site
         lat_model, lon_model (1-D/2-D array): the grid points of the model simulation
-        prior_vars (dict): the dictionary that stores the prior variables, including
+        prior_vars (dict): the dictionary that stores the prior variables in Pandas DataArray, including
             - tas (3-D array): surface air temperature in (time, lat, lon) [K]
             - pr (3-D array): precipitation rate in (time, lat, lon) [kg/m2/s]
             - psl (3-D array): sea-level pressure in (time, lat, lon) [Pa]
@@ -87,7 +88,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
                                          b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
+            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -109,9 +110,9 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         psl_sub = np.asarray(psl[:, lat_ind, lon_ind])
 
         # annualize the data
-        tas_ann, year_int = p2k.annualize(tas_sub, time_model)
-        psl_ann, year_int = p2k.annualize(psl_sub, time_model)
-        pr_ann, year_int = p2k.annualize(pr_sub, time_model)
+        tas_ann, year_int = utils.annualize_var(tas_sub, time_model)
+        psl_ann, year_int = utils.annualize_var(psl_sub, time_model)
+        pr_ann, year_int = utils.annualize_var(pr_sub, time_model)
 
         # sensor model
         d18O_ice = icecore.ice_sensor(time_model, d18Opr, pr)
@@ -158,6 +159,27 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         return pseudo_value, pseudo_time
 
+    def run_psm_for_tree_mxd():
+        tas = prior_vars_dict['tas']
+
+        if tas is None:
+            raise TypeError
+
+        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        if verbose:
+            print(f'PRYSM >>> tas={tas_sub[0]}')
+
+        time = utils.year_float2datetime(time_model)
+        tas_da = xr.DataArray(tas_sub, dims=['time'], coords={'time': time})
+        month = tas_da.groupby('time.month').apply(lambda x: x).month
+        tas_JJA = tas_da.where((month >= 6) & (month <= 8)).resample(time='A').mean('time')
+
+        SNR = psm_params_dict['SNR']
+        pseudo_value = tree.mxd(tas_JJA.values, lon_model[lon_ind], SNR=SNR)
+        pseudo_time = np.array(list(set([t.year for t in time])))
+
+        return pseudo_value, pseudo_time
+
     def run_linear_psm():
         tas = prior_vars_dict['tas']
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
@@ -167,7 +189,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pseudo_value = slope*tas_sub + intercept
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
+            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -185,7 +207,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pseudo_value = slope_temperature*tas_sub + slope_moisture*pr_sub + intercept
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = p2k.annualize_ts(pseudo_value, time_model)
+            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -211,7 +233,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'seasonality': list(range(1, 13)),
         'search_dist': 3,
 
-        # for coral d18O
+        # for coral.d18O
         'species': 'default',
         'b1': 0.3007062,
         'b2': 0.2619054,
@@ -219,7 +241,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'b4': 0.1552032,
         'b5': 0.15,
 
-        # for ice d18O
+        # for ice.d18O
         'nproc': 8,
 
         # for vslite
@@ -229,6 +251,9 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'M2': 0.05,
         'normalize': False,
         'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
+
+        # for tree.mxd
+        'SNR': 10,
 
         # for linear
         'slope': np.nan,
@@ -241,7 +266,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
     }
     psm_params_dict.update(psm_params)
 
-    lat_ind, lon_ind = p2k.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
+    lat_ind, lon_ind = utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
 
     if verbose:
         if len(np.shape(lat_model)) == 1:
@@ -253,6 +278,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'prysm.coral.d18O': run_psm_for_coral_d18O,
         'prysm.ice.d18O': run_psm_for_ice_d18O,
         'prysm.vslite': run_psm_for_tree_trw,
+        'prysm.tree.mxd': run_psm_for_tree_mxd,
         'linear': run_linear_psm,
         'bilinear': run_bilinear_psm,
     }

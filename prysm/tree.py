@@ -86,8 +86,7 @@ def vslite(syear, eyear, phi, T, P, T1=8, T2=23, M1=0.01, M2=0.05, Mmax=0.76, Mm
 
 
 def cellulose_sensor(t, T, P, RH, d18Os, d18Op, d18Ov, flag=1.0, iso=True):
-    """
-    Adapted from Sylvia Dee's code (https://github.com/fzhu2e/PRYSM/blob/master/psm/cellulose/sensor.py)
+    """ Adapted from Sylvia Dee's code (https://github.com/fzhu2e/PRYSM/blob/master/psm/cellulose/sensor.py)
 
     DOCSTRING: Function 'cellulose_sensor'
     DESCRIPTION: Sensor Model in psm_cellulose to compute d18O of cellulose.
@@ -114,30 +113,30 @@ def cellulose_sensor(t, T, P, RH, d18Os, d18Op, d18Ov, flag=1.0, iso=True):
     1. Roden (Roden et al. 2003): (NOTE: FLAG = 0 for Roden)
     2. Evans (Evans et al. 2007): (NOTE: FLAG = 1 for Evans)
     """
-#==============================================================
-# 1. Roden Model
-#==============================================================
+    #==============================================================
+    # 1. Roden Model
+    #==============================================================
     if flag == 0:
-# 1.1 Define Constants
+    # 1.1 Define Constants
         ek = -27.
         ecell = 27.
         ee = 9.8
-# 1.2 Load Relative Humidity
+    # 1.2 Load Relative Humidity
         relhum = RH/100.
         fo = 0.35
-# 1.3 Compute delta value of Leaf Water [dlw] (Ciasis, 2000)
+    # 1.3 Compute delta value of Leaf Water [dlw] (Ciasis, 2000)
         d18longts = d18Os
         dwvlongts = d18Ov
         dlw=ee + (1.0-relhum)*(d18longts-ek)+relhum*(dwvlongts)
-# 1.4 Compute d18O of Tree Cellulose ~ Yearly averages (timeseries) for 100 years
+    # 1.4 Compute d18O of Tree Cellulose ~ Yearly averages (timeseries) for 100 years
 
         droden=fo*(d18longts+ecell) + (1.0-fo)*(dlw+ecell)
         dcell=droden
         return dcell
 
-#==============================================================
-# 2. Evans Model
-#==============================================================
+    #==============================================================
+    # 2. Evans Model
+    #==============================================================
 
     elif flag == 1.0:
         # Convert Units for Inputs (USER CHECK)
@@ -235,3 +234,27 @@ def cellulose_sensor(t, T, P, RH, d18Os, d18Op, d18Ov, flag=1.0, iso=True):
         dcell=o18cc
 
         return dcell
+
+
+def mxd(T_JJA, lon, SNR=1):
+    ''' A simple MXD model
+
+    Args:
+        T_JJA (array): mean temperature of June, July, August [K]
+        lon (float): the longitude in the range [0, 360]
+        SNR (float): signal noise ratio
+
+    Returns:
+        pseudo_value (array): pseudoproxy value
+    '''
+    if lon < 180:
+        alpha = 0.8
+    else:
+        alpha = 0.1
+
+    signal = alpha * T_JJA
+    sig_var = np.var(signal)
+    noise_var = sig_var / SNR
+    noise = np.random.normal(0, noise_var, size=np.size(T_JJA))
+    pseudo_value = signal + noise
+    return pseudo_value
