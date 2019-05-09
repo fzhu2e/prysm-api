@@ -148,7 +148,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
         if verbose:
-            print(f'PRYSM >>> tas={tas_sub[0]}, pr={pr_sub[0]}')
+            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f} std={np.nanstd(tas_sub)}; pr: m={np.nanmean(pr_sub):.2f}, std={np.nanstd(pr_sub)}')
 
         pseudo_value = tree.vslite(
             syear, eyear, phi, tas_sub, pr_sub,
@@ -167,7 +167,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         if verbose:
-            print(f'PRYSM >>> tas={tas_sub[0]}')
+            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
 
         time = utils.year_float2datetime(time_model)
         tas_da = xr.DataArray(tas_sub, dims=['time'], coords={'time': time})
