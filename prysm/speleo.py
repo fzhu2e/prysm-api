@@ -9,7 +9,7 @@ import numpy as np
 import scipy.integrate as si
 from scipy.special import erf
 from scipy.signal import butter, lfilter, filtfilt
-import p2k
+import LMRt
 
 
 def butter_lowpass(cutoff, fs, order=3):
@@ -31,7 +31,7 @@ def bwf_filter(x, cutoff, fs=1.0, order=3):
     @author: jeg
     """
     b, a = butter_lowpass(cutoff, fs, order=order)
-    
+
     m = np.mean(x)
     y = filtfilt(b, a, x-m) + m
     return y
@@ -78,11 +78,11 @@ def speleo_sensor(year, d18Op, tas, pr, model='Adv-Disp', tau0=0.5, Pe=1.0):
     #======================================================================
     # ensure that tau0 is scaled correctly
     # (n.b. if in units of months, scale to years, *1/12)
-    d18O, year_int = p2k.annualize(d18Op, year, weights=pr)
+    d18O, year_int = LMRt.utils.annualize_var(d18Op, year, weights=pr)
 
     dt = np.mean(np.diff(year))
 
-    T, year_int = p2k.annualize(tas, year)
+    T, year_int = LMRt.utils.annualize_var(tas, year)
 
     tau0=tau0*dt
 

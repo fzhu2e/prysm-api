@@ -11,7 +11,7 @@ from . import speleo
 import numpy as np
 import os
 import itertools
-from LMRt import utils
+import LMRt
 import xarray as xr
 
 
@@ -88,7 +88,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
                                          b1=b1, b2=b2, b3=b3, b4=b4, b5=b5)
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
+            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -110,9 +110,9 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         psl_sub = np.asarray(psl[:, lat_ind, lon_ind])
 
         # annualize the data
-        tas_ann, year_int = utils.annualize_var(tas_sub, time_model)
-        psl_ann, year_int = utils.annualize_var(psl_sub, time_model)
-        pr_ann, year_int = utils.annualize_var(pr_sub, time_model)
+        tas_ann, year_int = LMRt.utils.annualize_var(tas_sub, time_model)
+        psl_ann, year_int = LMRt.utils.annualize_var(psl_sub, time_model)
+        pr_ann, year_int = LMRt.utils.annualize_var(pr_sub, time_model)
 
         # sensor model
         d18O_ice = icecore.ice_sensor(time_model, d18Opr, pr)
@@ -169,7 +169,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
 
-        time = utils.year_float2datetime(time_model)
+        time = LMRt.utils.year_float2datetime(time_model)
         tas_da = xr.DataArray(tas_sub, dims=['time'], coords={'time': time})
         month = tas_da.groupby('time.month').apply(lambda x: x).month
         tas_JJA = tas_da.where((month >= 6) & (month <= 8)).resample(time='A').mean('time')
@@ -189,7 +189,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pseudo_value = slope*tas_sub + intercept
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
+            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -207,7 +207,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pseudo_value = slope_temperature*tas_sub + slope_moisture*pr_sub + intercept
 
         if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = utils.annualize_var(pseudo_value, time_model)
+            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
         else:
             pseudo_time = time_model
 
@@ -266,7 +266,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
     }
     psm_params_dict.update(psm_params)
 
-    lat_ind, lon_ind = utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
+    lat_ind, lon_ind = LMRt.utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
 
     if verbose:
         if len(np.shape(lat_model)) == 1:

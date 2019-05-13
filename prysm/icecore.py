@@ -5,10 +5,10 @@ Adapted from Sylvia's PRYSM code (https://github.com/sylvia-dee/PRYSM) with prec
 '''
 
 import numpy as np
-import p2k
 from scipy import integrate, signal
 from pathos.multiprocessing import ProcessingPool as Pool
 from tqdm import tqdm
+import LMRt
 
 #  import time
 #  from IPython import embed
@@ -40,7 +40,7 @@ def ice_sensor(year, d18Op, pr, alt_diff=0.):
     alt_eff = -0.25
     alt_corr = (alt_diff/100.)*alt_eff
 
-    d18Op_weighted, year_int = p2k.annualize(d18Op, year, weights=pr)
+    d18Op_weighted, year_int = LMRt.utils.annualize_var(d18Op, year, weights=pr)
     d18O_ice = d18Op_weighted + alt_corr
 
     return d18O_ice
