@@ -181,35 +181,36 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         return pseudo_value, pseudo_time
 
     def run_linear_psm():
-        tas = prior_vars_dict['tas']
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
-
-        slope = psm_params_dict['slope']
-        intercept = psm_params_dict['intercept']
-        pseudo_value = slope*tas_sub + intercept
-
-        if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
+        if psm_params_dict['Seasonality'] is None:
+            pseudo_value, pseudo_time = np.nan, np.nan
         else:
-            pseudo_time = time_model
+            avgMonths = psm_params_dict['Seasonality']
+            tas = prior_vars_dict['tas']
+            tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+            tas_ann, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=avgMonths)
+
+            slope = psm_params_dict['slope']
+            intercept = psm_params_dict['intercept']
+            pseudo_value = slope*tas_ann + intercept
 
         return pseudo_value, pseudo_time
 
     def run_bilinear_psm():
-        tas = prior_vars_dict['tas']
-        pr = prior_vars_dict['pr']
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
-        pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
-
-        slope_temperature = psm_params_dict['slope_temperature']
-        slope_moisture = psm_params_dict['slope_moisture']
-        intercept = psm_params_dict['intercept']
-        pseudo_value = slope_temperature*tas_sub + slope_moisture*pr_sub + intercept
-
-        if psm_params_dict['seasonality'] == list(range(1, 13)):
-            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
+        if psm_params_dict['Seasonality'] is None:
+            pseudo_value, pseudo_time = np.nan, np.nan
         else:
-            pseudo_time = time_model
+            avgMonths_T, avgMonths_P  = psm_params_dict['Seasonality']
+            tas = prior_vars_dict['tas']
+            pr = prior_vars_dict['pr']
+            tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+            tas_ann, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=avgMonths_T)
+            pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
+            pr_ann, pseudo_time = LMRt.utils.seasonal_var(pr_sub, time_model, avgMonths=avgMonths_P)
+
+            slope_temperature = psm_params_dict['slope_temperature']
+            slope_moisture = psm_params_dict['slope_moisture']
+            intercept = psm_params_dict['intercept']
+            pseudo_value = slope_temperature*tas_ann + slope_moisture*pr_ann + intercept
 
         return pseudo_value, pseudo_time
 
@@ -256,10 +257,12 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'SNR': 10,
 
         # for linear
+        'Seasonality': None,
         'slope': np.nan,
         'intercept': np.nan,
 
         # for bilinear
+        'Seasonality': None,
         'slope_temperature': np.nan,
         'slope_moisture': np.nan,
         'intercept': np.nan,
@@ -286,8 +289,8 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
     pseudo_value, pseudo_time = psm_func[psm_name]()
 
     if verbose:
-        mean_value = np.mean(pseudo_value)
-        std_value = np.std(pseudo_value)
+        mean_value = np.nanmean(pseudo_value)
+        std_value = np.nanstd(pseudo_value)
         print(f'PRYSM >>> shape: {np.shape(pseudo_value)}')
         print(f'PRYSM >>> mean: {mean_value:.2f}; std: {std_value:.2f}')
 
