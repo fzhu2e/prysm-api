@@ -7,6 +7,7 @@ from rpy2.robjects.packages import importr
 import rpy2.robjects.numpy2ri
 import rpy2.robjects as ro
 rpy2.robjects.numpy2ri.activate()
+import random
 
 
 def vslite(syear, eyear, phi, T, P, T1=8, T2=23, M1=0.01, M2=0.05, Mmax=0.76, Mmin=0.01, normalize=True,
@@ -236,7 +237,7 @@ def cellulose_sensor(t, T, P, RH, d18Os, d18Op, d18Ov, flag=1.0, iso=True):
         return dcell
 
 
-def mxd(T_JJA, lon, SNR=1):
+def mxd(T_JJA, lon, SNR=1, seed=0):
     ''' A simple MXD model
 
     Args:
@@ -252,9 +253,10 @@ def mxd(T_JJA, lon, SNR=1):
     else:
         alpha = 0.1
 
+    random.seed(seed)
     signal = alpha * T_JJA
     sig_var = np.var(signal)
     noise_var = sig_var / SNR
-    noise = np.random.normal(0, noise_var, size=np.size(T_JJA))
+    noise = np.random.normal(0, np.sqrt(noise_var), size=np.size(T_JJA))
     pseudo_value = signal + noise
     return pseudo_value

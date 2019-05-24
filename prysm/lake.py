@@ -6,9 +6,10 @@ Adapted by Feng Zhu
 import scipy.stats as ss
 import numpy as np
 import fbm
+import random
 
 
-def simpleVarveModel(signal, H, shape=1.5, mean=1, SNR=.25):
+def simpleVarveModel(signal, H, shape=1.5, mean=1, SNR=.25, seed=0):
     ''' Simple PSM for varves
 
     Args:
@@ -17,13 +18,13 @@ def simpleVarveModel(signal, H, shape=1.5, mean=1, SNR=.25):
         '''
 
     # first, gammify the input
-    gamSig = gammify(signal, shape=shape, mean=mean)
+    gamSig = gammify(signal, shape=shape, mean=mean, seed=seed)
 
     # create gammafied autocorrelated fractal brownian motion series
     #     wa = Spectral.WaveletAnalysis()
     #     fBm_ts = wa.fBMsim(N=np.size(signal), H=H)
     fBm_ts = fbm.fgn(np.size(signal), H)
-    gamNoise = gammify(fBm_ts, shape=shape, mean=mean)
+    gamNoise = gammify(fBm_ts, shape=shape, mean=mean, seed=seed)
 
     # combine the signal with the noise, based on the SNR
     varves = (gamSig*SNR + gamNoise*(1/SNR)) / (SNR + 1/SNR)
@@ -31,12 +32,14 @@ def simpleVarveModel(signal, H, shape=1.5, mean=1, SNR=.25):
     return varves
 
 
-def gammify(X, shape=1.5, mean=1, jitter=False):
+def gammify(X, shape=1.5, mean=1, jitter=False, seed=0):
     ''' Transform each **row** of data matrix X to a gaussian distribution using the inverse Rosenblatt transform
     '''
     X = np.matrix(X)
     n = np.shape(X)[0]  # number of rows
     p = np.shape(X)[1]  # number of columns
+
+    random.seed(seed)
     if jitter:
         # add tiny random numbers to aviod ties
         X += np.random.normal(0, np.std(X)/1e6, n*p).reshape(n, p)
