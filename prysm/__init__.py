@@ -13,6 +13,7 @@ import os
 import itertools
 import LMRt
 import xarray as xr
+#  from IPython import embed
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
@@ -161,6 +162,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
     def run_psm_for_tree_mxd():
         tas = prior_vars_dict['tas']
+        SNR = psm_params_dict['SNR_tree.mxd']
 
         if tas is None:
             raise TypeError
@@ -174,11 +176,29 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         month = tas_da.groupby('time.month').apply(lambda x: x).month
         tas_JJA = tas_da.where((month >= 6) & (month <= 8)).resample(time='A').mean('time')
 
-        SNR = psm_params_dict['SNR']
         pseudo_value = tree.mxd(tas_JJA.values, lon_model[lon_ind], SNR=SNR)
         pseudo_time = np.array(list(set([t.year for t in time])))
 
         return pseudo_value, pseudo_time
+
+    def run_psm_for_lake_varve():
+        tas = prior_vars_dict['tas']
+        H = psm_params_dict['H']
+        shape = psm_params_dict['shape']
+        mean = psm_params_dict['mean']
+        SNR = psm_params_dict['SNR_lake.varve']
+        if tas is None:
+            raise TypeError
+
+        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        if verbose:
+            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
+
+        varves = lake.simpleVarveModel(tas_sub, H, shape=shape, mean=mean, SNR=SNR)
+        pseudo_value, pseudo_time = LMRt.utils.annualize_var(np.array(varves)[0], time_model)
+
+        return pseudo_value, pseudo_time
+
 
     def run_linear_psm():
         if psm_params_dict['Seasonality'] is None:
@@ -254,7 +274,13 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
 
         # for tree.mxd
-        'SNR': 10,
+        'SNR_tree.mxd': 1,
+
+        # for lake.varve
+        'H': 0.5,  # Hurst index
+        'shape': 1.5,
+        'mean': 1,
+        'SNR_lake.varve': 0.25,
 
         # for linear
         'Seasonality': None,
@@ -282,6 +308,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'prysm.ice.d18O': run_psm_for_ice_d18O,
         'prysm.vslite': run_psm_for_tree_trw,
         'prysm.tree.mxd': run_psm_for_tree_mxd,
+        'prysm.lake.varve': run_psm_for_lake_varve,
         'linear': run_linear_psm,
         'bilinear': run_bilinear_psm,
     }
