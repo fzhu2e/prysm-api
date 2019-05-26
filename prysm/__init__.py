@@ -13,7 +13,13 @@ import os
 import itertools
 import LMRt
 import xarray as xr
+from rpy2.robjects.packages import importr
+import rpy2.robjects.numpy2ri
+import rpy2.robjects as ro
+rpy2.robjects.numpy2ri.activate()
+import random
 #  from IPython import embed
+
 
 
 def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
@@ -138,6 +144,14 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         M2 = psm_params_dict['M2']
         normalize = psm_params_dict['normalize']
         Rlib_path = psm_params_dict['Rlib_path']
+        bias_correction = psm_params_dict['bias_correction']
+        ref_tas = psm_params_dict['ref_tas']
+        ref_pr = psm_params_dict['ref_pr']
+        ref_time = psm_params_dict['ref_time']
+        ref_lat = psm_params_dict['ref_lat']
+        ref_lon = psm_params_dict['ref_lon']
+        seed = psm_params_dict['seed']
+
         if verbose:
             print(f'PRYSM >>> Using R libs from: {Rlib_path}')
             print(f'PRYSM >>> T1={T1:.3f}, T2={T2:.3f}, M1={M1:.3f}, M2={M2:.3f}')
@@ -148,6 +162,68 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
+
+        if bias_correction:
+            if verbose:
+                print('PRYSM >>> Performing multivariate bias correction ...')
+
+            random.seed(seed)
+            # get the closest grid point in the reference field
+            ref_lat_ind, ref_lon_ind = LMRt.utils.find_closest_loc(
+                ref_lat, ref_lon, lat_obs, lon_obs)
+
+            ref_tas_sub = ref_tas[:, ref_lat_ind, ref_lon_ind]
+            ref_pr_sub = ref_pr[:, ref_lat_ind, ref_lon_ind]
+
+            if np.nanmean(ref_tas_sub) < 200:
+                ref_tas_sub += 273.15  # convert to [K]
+            if np.nanmean(ref_pr_sub) > 1:
+                ref_pr_sub = ref_pr_sub / (3000*24*30)  # convert to precipitation rate in [kg/m2/s]
+
+            # make the resolution of the time axis be month
+            ref_date = LMRt.utils.year_float2datetime(ref_time, resolution='month')
+            ref_time_fix = LMRt.utils.datetime2year_float(ref_date)
+
+            model_date = LMRt.utils.year_float2datetime(time_model, resolution='month')
+            model_time_fix = LMRt.utils.datetime2year_float(model_date)
+
+            # get the overlapped timespan for calibration
+            overlap_yrs = np.intersect1d(ref_time_fix, model_time_fix)
+            ind_ref = np.searchsorted(ref_time, overlap_yrs)
+            ind_model = np.searchsorted(time_model, overlap_yrs)
+
+            ref_tas_c = ref_tas_sub[ind_ref]
+            ref_pr_c = ref_pr_sub[ind_ref]
+            ref_vars_c = np.array([ref_pr_c, ref_tas_c]).T
+
+            model_tas_c = tas_sub[ind_model]
+            model_pr_c = pr_sub[ind_model]
+            model_vars_c = np.array([model_pr_c, model_tas_c]).T
+
+            model_vars = np.array([pr_sub, tas_sub]).T
+            if verbose:
+                print('PRYSM >>> np.shape(ref_vars_c)=', np.shape(ref_vars_c))
+                print('PRYSM >>> np.shape(model_vars_c)=', np.shape(model_vars_c))
+                print('PRYSM >>> np.shape(model_vars)=', np.shape(model_vars))
+
+            # run the multivariate bias correction function
+            ro.r('.libPaths("{}")'.format(Rlib_path))
+            MBCn = importr('MBC').MBCn
+
+            res = MBCn(o_c=ref_vars_c, m_c=model_vars_c, m_p=model_vars)
+            res_array = np.array(res[1])
+            if verbose:
+                print('PRYSM >>> np.shape(res_array)=', np.shape(res_array))
+
+            pr_sub_old = np.copy(pr_sub)
+            tas_sub_old = np.copy(tas_sub)
+            pr_sub = res_array[:, 0]
+            tas_sub = res_array[:, 1]
+
+            if verbose:
+                print(f'PRYSM >>> tas_mean: {np.nanmean(tas_sub_old)} -> {np.nanmean(tas_sub)}')
+                print(f'PRYSM >>> pr_mean: {np.nanmean(pr_sub_old)} -> {np.nanmean(pr_sub)}')
+
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f} std={np.nanstd(tas_sub)}; pr: m={np.nanmean(pr_sub):.2f}, std={np.nanstd(pr_sub)}')
 
@@ -170,7 +246,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         if verbose:
-            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
+            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub):.2f}, std={np.nanstd(tas_sub)}')
 
         time = LMRt.utils.year_float2datetime(time_model)
         tas_da = xr.DataArray(tas_sub, dims=['time'], coords={'time': time})
@@ -274,6 +350,12 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'M1': 0.01,
         'M2': 0.05,
         'normalize': False,
+        'bias_correction': False,
+        'ref_tas': None,
+        'ref_pr': None,
+        'ref_time': None,
+        'ref_lat': None,
+        'ref_lon': None,
         'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
 
         # for tree.mxd
