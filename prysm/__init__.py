@@ -248,13 +248,9 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub):.2f}, std={np.nanstd(tas_sub)}')
 
-        time = LMRt.utils.year_float2datetime(time_model)
-        tas_da = xr.DataArray(tas_sub, dims=['time'], coords={'time': time})
-        month = tas_da.groupby('time.month').apply(lambda x: x).month
-        tas_JJA = tas_da.where((month >= 6) & (month <= 8)).resample(time='A').mean('time')
+        tas_JJA, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=[6, 7, 8])
 
         pseudo_value = tree.mxd(tas_JJA.values, lon_model[lon_ind], SNR=SNR, seed=seed)
-        pseudo_time = np.array(list(set([t.year for t in time])))
 
         return pseudo_value, pseudo_time
 
@@ -272,8 +268,10 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
 
-        varves = lake.simpleVarveModel(tas_sub, H, shape=shape, mean=mean, SNR=SNR, seed=seed)
-        pseudo_value, pseudo_time = LMRt.utils.annualize_var(np.array(varves)[0], time_model)
+        tas_JJA, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=[6, 7, 8])
+
+        varves = lake.simpleVarveModel(tas_JJA, H, shape=shape, mean=mean, SNR=SNR, seed=seed)
+        pseudo_value = np.array(varves)[0]
 
         return pseudo_value, pseudo_time
 
