@@ -117,7 +117,7 @@ def pseudocoral(lat, lon, sst, sss=None, d18O=None, species="default",
     if d18O is None:
         coral = a*sst+b*sss
     else:
-        coral = a*sst + d18O
+        coral = a*sst + 0.97002*d18O  # SMOW/PDB = 0.97002
 
 #====================================================================
 

@@ -22,7 +22,8 @@ import random
 
 
 
-def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
+def forward(psm_name, lat_obs, lon_obs, elev_obs,
+            lat_model, lon_model, elev_model, time_model,
             prior_vars, verbose=False, **psm_params):
 
     ''' Forward environmental variables to proxy variables
@@ -145,12 +146,14 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         normalize = psm_params_dict['normalize']
         Rlib_path = psm_params_dict['Rlib_path']
         bias_correction = psm_params_dict['bias_correction']
+        elev_correction = psm_params_dict['elev_correction']
         ref_tas = psm_params_dict['ref_tas']
         ref_pr = psm_params_dict['ref_pr']
         ref_time = psm_params_dict['ref_time']
         ref_lat = psm_params_dict['ref_lat']
         ref_lon = psm_params_dict['ref_lon']
         seed = psm_params_dict['seed']
+        lapse_rate = psm_params_dict['lapse_rate']
 
         if verbose:
             print(f'PRYSM >>> Using R libs from: {Rlib_path}')
@@ -164,6 +167,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
 
         if bias_correction:
+
             if verbose:
                 print('PRYSM >>> Performing multivariate bias correction ...')
 
@@ -223,6 +227,21 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
             if verbose:
                 print(f'PRYSM >>> tas_mean: {np.nanmean(tas_sub_old)} -> {np.nanmean(tas_sub)}')
                 print(f'PRYSM >>> pr_mean: {np.nanmean(pr_sub_old)} -> {np.nanmean(pr_sub)}')
+
+
+        if elev_correction:
+            if verbose:
+                print('PRYSM >>> Performing elevation bias correction ...')
+
+            elev_sub = elev_model[lat_ind, lon_ind]
+            alt_diff = elev_obs - elev_sub  # in [m]
+            tas_sub_old = np.copy(tas_sub)
+            tas_sub = tas_sub + lapse_rate*alt_diff
+
+            if verbose:
+                print(f'PRYSM >>> elev_model: {elev_sub} -> elev_obs: {elev_obs}')
+                print(f'PRYSM >>> tas_mean: {np.nanmean(tas_sub_old)} -> {np.nanmean(tas_sub)}')
+
 
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f} std={np.nanstd(tas_sub)}; pr: m={np.nanmean(pr_sub):.2f}, std={np.nanstd(pr_sub)}')
@@ -330,6 +349,7 @@ def forward(psm_name, lat_obs, lon_obs, lat_model, lon_model, time_model,
         'seasonality': list(range(1, 13)),
         'search_dist': 3,
         'seed': 0,
+        'lapse_rate': -5*1e-3,
 
         # for coral.d18O
         'species': 'default',
