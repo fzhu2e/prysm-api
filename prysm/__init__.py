@@ -22,9 +22,10 @@ import random
 
 
 
-def forward(psm_name, lat_obs, lon_obs, elev_obs,
-            lat_model, lon_model, elev_model, time_model,
-            prior_vars, verbose=False, **psm_params):
+def forward(psm_name, lat_obs, lon_obs,
+            lat_model, lon_model, time_model,
+            prior_vars, elev_obs=None, elev_model=None,
+            verbose=False, **psm_params):
 
     ''' Forward environmental variables to proxy variables
 
@@ -349,7 +350,7 @@ def forward(psm_name, lat_obs, lon_obs, elev_obs,
         'seasonality': list(range(1, 13)),
         'search_dist': 3,
         'seed': 0,
-        'lapse_rate': -5*1e-3,
+        'lapse_rate': -6*1e-3,
 
         # for coral.d18O
         'species': 'default',
