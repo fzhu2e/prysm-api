@@ -69,7 +69,7 @@ def vslite(syear, eyear, phi, T, P, T1=8, T2=23, M1=0.01, M2=0.05, Mmax=0.76, Mm
     T_model = T.reshape((nyr, 12)).T - 273.15  # in monthly temperatures (degC)
     P_model = P.reshape((nyr, 12)).T * 3600*24*30  # in accumulated monthly precipitation (mm)
 
-    res = VSLiteR.VSLite(syear, eyear, phi, T_model, P_model, T1=T1, T2=T2, M1=M1, Mmax=Mmax, Mmin=Mmin,
+    res = VSLiteR.VSLite(syear, eyear, phi, T_model, P_model, T1=T1, T2=T2, M1=M1, M2=M2, Mmax=Mmax, Mmin=Mmin,
                          alph=alph, m_th=m_th, mu_th=mu_th, rootd=rootd, M0=M0, substep=substep,
                          I_0=I_0, I_f=I_f, hydroclim=hydroclim)
 
