@@ -351,6 +351,7 @@ def forward(psm_name, lat_obs, lon_obs,
         'search_dist': 3,
         'seed': 0,
         'lapse_rate': -6*1e-3,
+        'elev_correction': False,
 
         # for coral.d18O
         'species': 'default',
@@ -375,7 +376,7 @@ def forward(psm_name, lat_obs, lon_obs,
         'ref_time': None,
         'ref_lat': None,
         'ref_lon': None,
-        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.4/Resources/library',
+        'Rlib_path': '/Library/Frameworks/R.framework/Versions/3.6/Resources/library',
 
         # for tree.mxd
         'SNR_tree.mxd': 1,
