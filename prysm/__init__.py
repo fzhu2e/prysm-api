@@ -142,6 +142,9 @@ def forward(psm_name, lat_obs, lon_obs,
         M2 = psm_params_dict['M2']
         normalize = psm_params_dict['normalize']
         Rlib_path = psm_params_dict['Rlib_path']
+        pid = psm_params_dict['pid']
+        tas_corrected = psm_params_dict['tas_corrected']
+        pr_corrected = psm_params_dict['pr_corrected']
         bias_correction = psm_params_dict['bias_correction']
         elev_correction = psm_params_dict['elev_correction']
         ref_tas = psm_params_dict['ref_tas']
@@ -164,22 +167,26 @@ def forward(psm_name, lat_obs, lon_obs,
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
 
         if bias_correction:
+            pr_sub_old = np.copy(pr_sub)
+            tas_sub_old = np.copy(tas_sub)
 
             if verbose:
                 print('PRYSM >>> Performing multivariate bias correction ...')
 
-            # get the closest grid point in the reference field
-            ref_lat_ind, ref_lon_ind = LMRt.utils.find_closest_loc(ref_lat, ref_lon, lat_obs, lon_obs)
+            if tas_corrected is None:
+                # get the closest grid point in the reference field
+                ref_lat_ind, ref_lon_ind = LMRt.utils.find_closest_loc(ref_lat, ref_lon, lat_obs, lon_obs)
 
-            ref_tas_sub = ref_tas[:, ref_lat_ind, ref_lon_ind]
-            ref_pr_sub = ref_pr[:, ref_lat_ind, ref_lon_ind]
+                ref_tas_sub = ref_tas[:, ref_lat_ind, ref_lon_ind]
+                ref_pr_sub = ref_pr[:, ref_lat_ind, ref_lon_ind]
 
-            pr_sub_old = np.copy(pr_sub)
-            tas_sub_old = np.copy(tas_sub)
-            tas_sub, pr_sub = LMRt.utils.mbc(
-                tas_sub, pr_sub, time_model, ref_tas_sub, ref_pr_sub, ref_time,
-                Rlib_path=Rlib_path, seed=seed,
-            )
+                tas_sub, pr_sub = LMRt.utils.mbc(
+                    tas_sub, pr_sub, time_model, ref_tas_sub, ref_pr_sub, ref_time,
+                    Rlib_path=Rlib_path, seed=seed,
+                )
+            else:
+                tas_sub = tas_corrected[pid]
+                pr_sub = pr_corrected[pid]
 
             if verbose:
                 print(f'PRYSM >>> tas_mean: {np.nanmean(tas_sub_old)} -> {np.nanmean(tas_sub)}')
@@ -327,6 +334,9 @@ def forward(psm_name, lat_obs, lon_obs,
         'M2': 0.05,
         'normalize': False,
         'bias_correction': False,
+        'tas_corrected': None,
+        'pr_corrected': None,
+        'pid': None,
         'ref_tas': None,
         'ref_pr': None,
         'ref_time': None,
