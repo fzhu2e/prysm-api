@@ -14,6 +14,7 @@ import itertools
 import LMRt
 import xarray as xr
 import random
+from scipy.stats.mstats import mquantiles
 #  from IPython import embed
 
 
@@ -152,6 +153,9 @@ def forward(psm_name, lat_obs, lon_obs,
         ref_time = psm_params_dict['ref_time']
         ref_lat = psm_params_dict['ref_lat']
         ref_lon = psm_params_dict['ref_lon']
+        fix_T = psm_params_dict['fix_T']
+        T1_quantile = psm_params_dict['T1_quantile']
+        T2_quantile = psm_params_dict['T2_quantile']
         seed = psm_params_dict['seed']
         lapse_rate = psm_params_dict['lapse_rate']
 
@@ -206,9 +210,28 @@ def forward(psm_name, lat_obs, lon_obs,
                 print(f'PRYSM >>> elev_model: {elev_sub} -> elev_obs: {elev_obs}')
                 print(f'PRYSM >>> tas_mean: {np.nanmean(tas_sub_old)} -> {np.nanmean(tas_sub)}')
 
+        if fix_T:
+            tas_qs = mquantiles(tas_sub-273.15, T1_quantile)[0]
+            if T1 > tas_qs:
+                diff = T1 - tas_qs
+                if verbose:
+                    print(f'PRYSM >>> Fixing T1 to T1_quantile: {T1_quantile}...')
+                    print(f'PRYSM >>> T1: {T1} -> {tas_qs}')
+                T1 -= diff
+                T2 -= diff
+
+            tas_qs = mquantiles(tas_sub-273.15, T2_quantile)[0]
+            if T2 < tas_qs:
+                diff = tas_qs - T2
+                if verbose:
+                    print(f'PRYSM >>> Fixing T2 to T2_quantile: {T2_quantile}...')
+                    print(f'PRYSM >>> T2: {T2} -> {tas_qs}')
+                T1 += diff
+                T2 += diff
+
 
         if verbose:
-            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f} std={np.nanstd(tas_sub)}; pr: m={np.nanmean(pr_sub):.2f}, std={np.nanstd(pr_sub)}')
+            print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub):.2f}; pr: m={np.nanmean(pr_sub*3600*24*30):.2f}, std={np.nanstd(pr_sub*3600*24*30):.2f}')
 
         pseudo_value = tree.vslite(
             syear, eyear, phi, tas_sub, pr_sub,
@@ -336,6 +359,9 @@ def forward(psm_name, lat_obs, lon_obs,
         'bias_correction': False,
         'tas_corrected': None,
         'pr_corrected': None,
+        'fix_T1': False,
+        'T1_quantile': 0.7,
+        'T2_quantile': 0.7,
         'pid': None,
         'ref_tas': None,
         'ref_pr': None,
