@@ -5,6 +5,8 @@
 # Modified 10_16_2015 <sdee@usc.edu>
 # Modified 11_17_2015 <sylvia_dee@brown.edu>
 #====================================================================
+import random
+from scipy.stats import norm
 
 def pseudocoral(lat, lon, sst, sss=None, d18O=None, species="default",
                 b1=0.3007062, b2=0.2619054, b3=0.436509, b4=0.1552032, b5=0.15):
@@ -122,3 +124,15 @@ def pseudocoral(lat, lon, sst, sss=None, d18O=None, species="default",
 #====================================================================
 
     return coral
+
+
+def sensor_SrCa(sst, a=10.553, b=None, seed=0):
+    if b is None:
+        mu = -0.06
+        std = 0.01
+        b = norm.rvs(loc=mu, scale=std, random_state=seed)
+
+    SrCa = a + b*sst
+
+    return SrCa
+

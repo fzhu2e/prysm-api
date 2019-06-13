@@ -100,6 +100,25 @@ def forward(psm_name, lat_obs, lon_obs,
 
         return pseudo_value, pseudo_time
 
+    def run_psm_for_coral_SrCa():
+        a = psm_params_dict['a']
+        b = psm_params_dict['b']
+        seed = psm_params_dict['seed']
+
+        sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
+        if np.all(np.isnan(sst_sub)):
+            print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
+            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+
+        pseudo_value = coral.sensor_SrCa(sst_sub, a, b, seed)
+
+        if psm_params_dict['seasonality'] == list(range(1, 13)):
+            pseudo_value, pseudo_time = LMRt.utils.annualize_var(pseudo_value, time_model)
+        else:
+            pseudo_time = time_model
+
+        return pseudo_value, pseudo_time
+
     def run_psm_for_ice_d18O():
         tas = prior_vars_dict['tas']
         pr = prior_vars_dict['pr']
@@ -347,6 +366,10 @@ def forward(psm_name, lat_obs, lon_obs,
         'b4': 0.1552032,
         'b5': 0.15,
 
+        # for coral.SrCa
+        'a': 10.553,
+        'b': None,
+
         # for ice.d18O
         'nproc': 8,
 
@@ -402,6 +425,7 @@ def forward(psm_name, lat_obs, lon_obs,
 
     psm_func = {
         'prysm.coral.d18O': run_psm_for_coral_d18O,
+        'prysm.coral.SrCa': run_psm_for_coral_SrCa,
         'prysm.ice.d18O': run_psm_for_ice_d18O,
         'prysm.vslite': run_psm_for_tree_trw,
         'prysm.tree.mxd': run_psm_for_tree_mxd,
