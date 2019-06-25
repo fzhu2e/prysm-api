@@ -126,13 +126,20 @@ def pseudocoral(lat, lon, sst, sss=None, d18O=None, species="default",
     return coral
 
 
-def sensor_SrCa(sst, a=10.553, b=None, seed=0):
-    if b is None:
+def sensor_SrCa(sst, b=10.553, a=None, seed=0):
+    ''' Sensor model for Coral Sr/Ca = a SST + b
+
+    Args:
+        sst (1-D array): sea surface temperature in [K]
+    '''
+    if a is None:
         mu = -0.06
         std = 0.01
         b = norm.rvs(loc=mu, scale=std, random_state=seed)
 
-    SrCa = a + b*sst
+    sst_degC = sst - 273.15
+
+    SrCa = a + b*sst_degC
 
     return SrCa
 

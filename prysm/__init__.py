@@ -22,6 +22,8 @@ from scipy.stats.mstats import mquantiles
 def forward(psm_name, lat_obs, lon_obs,
             lat_model, lon_model, time_model,
             prior_vars, elev_obs=None, elev_model=None,
+            latlon_search_mode='latlon',
+            latlon_ind_dict=None, record_id=None,
             verbose=False, **psm_params):
 
     ''' Forward environmental variables to proxy variables
@@ -62,7 +64,8 @@ def forward(psm_name, lat_obs, lon_obs,
         sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
-            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+            sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f}, {lon_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f})')
 
         sss = prior_vars_dict['sss']
         if sss is not None:
@@ -101,6 +104,7 @@ def forward(psm_name, lat_obs, lon_obs,
         return pseudo_value, pseudo_time
 
     def run_psm_for_coral_SrCa():
+        sst = prior_vars_dict['sst']
         a = psm_params_dict['a']
         b = psm_params_dict['b']
         seed = psm_params_dict['seed']
@@ -108,7 +112,8 @@ def forward(psm_name, lat_obs, lon_obs,
         sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
-            sst_sub = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+            sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f}, {lon_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f})')
 
         pseudo_value = coral.sensor_SrCa(sst_sub, a, b, seed)
 
@@ -367,8 +372,8 @@ def forward(psm_name, lat_obs, lon_obs,
         'b5': 0.15,
 
         # for coral.SrCa
-        'a': 10.553,
-        'b': None,
+        'a': None,
+        'b': 10.553,
 
         # for ice.d18O
         'nproc': 8,
@@ -415,7 +420,11 @@ def forward(psm_name, lat_obs, lon_obs,
     }
     psm_params_dict.update(psm_params)
 
-    lat_ind, lon_ind = LMRt.utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs)
+    if latlon_ind_dict is None:
+        lat_ind, lon_ind = LMRt.utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs, mode=latlon_search_mode)
+    else:
+        # load precalculated lat/lon indices
+        lat_ind, lon_ind = latlon_ind_dict[record_id]
 
     if verbose:
         if len(np.shape(lat_model)) == 1:
@@ -465,43 +474,8 @@ def search_nearest_not_nan(field, lat_ind, lon_ind, distance=3):
             continue
         else:
             print(f'PRYSM >>> Found not nan with (lat_fix, lon_fix): ({lat_fix}, {lon_fix})')
-            return target
+            return target, lat_fix, lon_fix
 
     print(f'PRYSM >>> Fail to find value not nan!')
-    return np.nan
+    return np.nan, np.nan, np.nan
 
-
-def calibrate_vslite(T, P, phi, RW, nsamp=1000,
-                     matlab_path=None, func_path=None, verbose=False):
-    ''' VS-Lite calibration
-
-    A python wrapper for the Matlab code (estimate_vslite_params_v2_3.m by Dr. Suz Tolwinskiward).
-    Matlab must be installed.
-
-    Reference:
-        https://github.com/fzhu2e/PRYSM/blob/master/MatlabModels/VSLite/estimate_vslite_params_v2_3.m
-
-    '''
-
-    if matlab_path is None:
-        raise ValueError('ERROR: The path for Matlab (matlab_path) must be set!')
-
-    if func_path is None:
-        api_rootpath = os.path.dirname(tree.__file__)
-        func_path = os.path.join(api_rootpath, 'estimate_vslite_params_v2_3.m')
-
-    from pymatbridge import Matlab
-    mlab = Matlab(matlab_path)
-    mlab.start()
-
-    if verbose:
-        print(func_path)
-    res = mlab.run_func(func_path, T, P, phi, RW, 'nsamp', nsamp, nargout=4)
-    if verbose:
-        print(res)
-    T1 = res['result'][0]
-    T2 = res['result'][1]
-    M1 = res['result'][2]
-    M2 = res['result'][3]
-
-    return T1, T2, M1, M2
