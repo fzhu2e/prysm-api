@@ -101,7 +101,12 @@ def forward(psm_name, lat_obs, lon_obs,
         else:
             pseudo_time = time_model
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_psm_for_coral_SrCa():
         sst = prior_vars_dict['sst']
@@ -122,7 +127,12 @@ def forward(psm_name, lat_obs, lon_obs,
         else:
             pseudo_time = time_model
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_psm_for_ice_d18O():
         tas = prior_vars_dict['tas']
@@ -152,7 +162,12 @@ def forward(psm_name, lat_obs, lon_obs,
         pseudo_value = ice_diffused[::-1]
         pseudo_time = year_int
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_psm_for_tree_trw():
         tas = prior_vars_dict['tas']
@@ -264,7 +279,12 @@ def forward(psm_name, lat_obs, lon_obs,
         )
         pseudo_time = np.linspace(syear, eyear, nyr)
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_psm_for_tree_mxd():
         tas = prior_vars_dict['tas']
@@ -282,7 +302,12 @@ def forward(psm_name, lat_obs, lon_obs,
 
         pseudo_value = tree.mxd(tas_JJA.values, lon_model[lon_ind], SNR=SNR, seed=seed)
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_psm_for_lake_varve():
         tas = prior_vars_dict['tas']
@@ -303,7 +328,12 @@ def forward(psm_name, lat_obs, lon_obs,
         varves = lake.simpleVarveModel(tas_JJA, H, shape=shape, mean=mean, SNR=SNR, seed=seed)
         pseudo_value = np.array(varves)[0]
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
 
     def run_linear_psm():
@@ -319,7 +349,12 @@ def forward(psm_name, lat_obs, lon_obs,
             intercept = psm_params_dict['intercept']
             pseudo_value = slope*tas_ann + intercept
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     def run_bilinear_psm():
         if psm_params_dict['Seasonality'] is None:
@@ -338,7 +373,12 @@ def forward(psm_name, lat_obs, lon_obs,
             intercept = psm_params_dict['intercept']
             pseudo_value = slope_temperature*tas_ann + slope_moisture*pr_ann + intercept
 
-        return pseudo_value, pseudo_time
+        res = {
+            'pseudo_time': pseudo_time,
+            'pseudo_value': pseudo_value,
+        }
+
+        return res
 
     # run PRYSM
     if verbose:
@@ -443,7 +483,8 @@ def forward(psm_name, lat_obs, lon_obs,
         'bilinear': run_bilinear_psm,
     }
 
-    pseudo_value, pseudo_time = psm_func[psm_name]()
+    res = psm_func[psm_name]()
+    pseudo_value, pseudo_time = res['pseudo_value'], res['pseudo_time']
 
     if verbose:
         mean_value = np.nanmean(pseudo_value)
@@ -451,7 +492,7 @@ def forward(psm_name, lat_obs, lon_obs,
         print(f'PRYSM >>> shape: {np.shape(pseudo_value)}')
         print(f'PRYSM >>> mean: {mean_value:.2f}; std: {std_value:.2f}')
 
-    return pseudo_value, pseudo_time
+    return res
 
 
 def search_nearest_not_nan(field, lat_ind, lon_ind, distance=3):
