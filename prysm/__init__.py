@@ -56,23 +56,30 @@ def forward(psm_name, lat_obs, lon_obs,
 
     '''
     def run_psm_for_coral_d18O():
-        if np.max(prior_vars_dict['sst']) > 200:
-            sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
-        else:
-            sst = np.asarray(prior_vars_dict['sst'])
-
+        sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
         sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
             sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f}, {lon_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f})')
+            lat_ind_fix = lat_ind + lat_fix
+            lon_ind_fix = lon_ind + lon_fix
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind_fix, lon_ind_fix]:.2f}, {lon_model[lat_ind_fix, lon_ind_fix]:.2f})')
+        else:
+            lat_ind_fix = lat_ind
+            lon_ind_fix = lon_ind
 
         sss = prior_vars_dict['sss']
         if sss is not None:
             sss_sub = np.asarray(sss[:, lat_ind, lon_ind])
             if np.all(np.isnan(sss_sub)):
                 print(f'PRYSM >>> sss all nan; searching for nearest not nan ...')
-                sss_sub = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+                sss_sub, lat_fix, lon_fix = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+                lat_ind_fix = lat_ind + lat_fix
+                lon_ind_fix = lon_ind + lon_fix
+                print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind_fix, lon_ind_fix]:.2f}, {lon_model[lat_ind_fix, lon_ind_fix]:.2f})')
+            else:
+                lat_ind_fix = lat_ind
+                lon_ind_fix = lon_ind
         else:
             sss_sub = None
 
@@ -81,7 +88,13 @@ def forward(psm_name, lat_obs, lon_obs,
             d18Osw_sub = np.asarray(d18Osw[:, lat_ind, lon_ind])
             if np.all(np.isnan(d18Osw_sub)):
                 print(f'PRYSM >>> d18Osw all nan; searching for nearest not nan ...')
-                d18Osw_sub = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+                d18Osw_sub, lat_fix, lon_fix = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
+                lat_ind_fix = lat_ind + lat_fix
+                lon_ind_fix = lon_ind + lon_fix
+                print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind_fix, lon_ind_fix]:.2f}, {lon_model[lat_ind_fix, lon_ind_fix]:.2f})')
+            else:
+                lat_ind_fix = lat_ind
+                lon_ind_fix = lon_ind
         else:
             d18Osw_sub = None
 
@@ -104,12 +117,14 @@ def forward(psm_name, lat_obs, lon_obs,
         res = {
             'pseudo_time': pseudo_time,
             'pseudo_value': pseudo_value,
+            'lat_ind': lat_ind_fix,
+            'lon_ind': lon_ind_fix,
         }
 
         return res
 
     def run_psm_for_coral_SrCa():
-        sst = prior_vars_dict['sst']
+        sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
         a = psm_params_dict['a']
         b = psm_params_dict['b']
         seed = psm_params_dict['seed']
@@ -118,7 +133,12 @@ def forward(psm_name, lat_obs, lon_obs,
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
             sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f}, {lon_model[lat_ind+lat_fix, lon_ind+lon_fix]:.2f})')
+            lat_ind_fix = lat_ind + lat_fix
+            lon_ind_fix = lon_ind + lon_fix
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind_fix, lon_ind_fix]:.2f}, {lon_model[lat_ind_fix, lon_ind_fix]:.2f})')
+        else:
+            lat_ind_fix = lat_ind
+            lon_ind_fix = lon_ind
 
         pseudo_value = coral.sensor_SrCa(sst_sub, a, b, seed)
 
@@ -130,6 +150,8 @@ def forward(psm_name, lat_obs, lon_obs,
         res = {
             'pseudo_time': pseudo_time,
             'pseudo_value': pseudo_value,
+            'lat_ind': lat_ind_fix,
+            'lon_ind': lon_ind_fix,
         }
 
         return res
@@ -188,7 +210,6 @@ def forward(psm_name, lat_obs, lon_obs,
         tas_corrected = psm_params_dict['tas_corrected']
         pr_corrected = psm_params_dict['pr_corrected']
         bias_correction = psm_params_dict['bias_correction']
-        elev_correction = psm_params_dict['elev_correction']
         ref_tas = psm_params_dict['ref_tas']
         ref_pr = psm_params_dict['ref_pr']
         ref_time = psm_params_dict['ref_time']
@@ -449,9 +470,9 @@ def forward(psm_name, lat_obs, lon_obs,
     }
 
     res = psm_func[psm_name]()
-    pseudo_value, pseudo_time = res['pseudo_value'], res['pseudo_time']
 
     if verbose:
+        pseudo_value, pseudo_time = res['pseudo_value'], res['pseudo_time']
         mean_value = np.nanmean(pseudo_value)
         std_value = np.nanstd(pseudo_value)
         print(f'PRYSM >>> shape: {np.shape(pseudo_value)}')
