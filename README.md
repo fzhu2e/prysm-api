@@ -2,6 +2,8 @@
 [![](https://img.shields.io/badge/platform-Mac_Linux-red.svg)]()
 [![](https://img.shields.io/badge/language-Python3-success.svg)](https://www.python.org/)
 ![GitHub](https://img.shields.io/github/license/fzhu2e/prysm-api.svg?color=blue)
+[![DOI](https://zenodo.org/badge/180254702.svg)](https://zenodo.org/badge/latestdoi/180254702)
+
 
 # prysm-api
 The API for [PRoxY System Modeling (PRYSM)](https://github.com/sylvia-dee/PRYSM).
@@ -79,3 +81,9 @@ res = prysm.forward(
 ## License
 
 MIT License (see the details [here](LICENSE))
+
+## How to cite
+If you find this package useful and use it in your research, please cite it with DOI:
+[![DOI](https://zenodo.org/badge/180254702.svg)](https://zenodo.org/badge/latestdoi/180254702)
+
+... and welcome to Star and Fork!
