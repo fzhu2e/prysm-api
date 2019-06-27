@@ -1,4 +1,7 @@
 [![PyPI](https://img.shields.io/pypi/v/prysm-api.svg)]()
+[![](https://img.shields.io/badge/platform-Mac_Linux-red.svg)]()
+[![](https://img.shields.io/badge/language-Python3-success.svg)](https://www.python.org/)
+![GitHub](https://img.shields.io/github/license/fzhu2e/prysm-api.svg?color=blue)
 
 # prysm-api
 The API for [PRoxY System Modeling (PRYSM)](https://github.com/sylvia-dee/PRYSM).
@@ -7,16 +10,16 @@ Currently, it supports PSMs listed below:
 + Ice-core d18O
 + Tree-ring width with [VSLite](https://github.com/suztolwinskiward/VSLiteR)
 + Tree-ring cellulose
-+ MXD
-+ Coral d18O
-+ Speleothem
++ Tree MXD
++ Coral d18O and Sr/Ca
++ Speleothem d18O
 + Varve thickness
 
 ## How to install
 
 Simply
 ```bash
-pip install prysm-api
+pip install prysm-api LMRt  # LMRt provides many useful functions necessary for prysm-api
 ```
 
 To use VS-Lite, in `R`
@@ -33,7 +36,7 @@ devtools::install_github("fzhu2e/VSLiteR")
 ```python
 import prysm
 
-pseudo_value, pseudo_time = prysm.forward(
+res = prysm.forward(
     'prysm.vslite',                 # psm name
     lat_obs, lon_obs,               # lat/lon of the target location
     lat, lon, time,                 # dimension variables of the environmentals
@@ -44,13 +47,15 @@ pseudo_value, pseudo_time = prysm.forward(
     T1=8, T2=23, M1=0.01, M2=0.05,  # PSM specific parameters
 )
 ```
+Here `res` is a dictionary that includes the pseudoproxy values and the
+corresponding timepoints, plus other output for diagnostics.
 
 + Calling the PSM for ice core d18O
 
 ```python
 import prysm
 
-pseudo_value, pseudo_time = prysm.forward(
+res = prysm.forward(
     'prysm.ice.d18O',               # psm name
     lat_obs, lon_obs,               # lat/lon of the target location
     lat, lon, time,                 # dimension variables of the environmentals
