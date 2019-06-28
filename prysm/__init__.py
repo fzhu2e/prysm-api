@@ -187,7 +187,7 @@ def forward(psm_name, lat_obs, lon_obs,
         res = {
             'pseudo_time': pseudo_time,
             'pseudo_value': pseudo_value,
-            'd18O_ice': d18O_ice,
+            'd18O_ice': d18O_ice[:, lat_ind, lon_ind],
             'ice_diffused': ice_diffused,
         }
 
