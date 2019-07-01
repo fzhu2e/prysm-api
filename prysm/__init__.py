@@ -289,7 +289,7 @@ def forward(psm_name, lat_obs, lon_obs,
 
         tas_JJA, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=[6, 7, 8])
 
-        pseudo_value = tree.mxd(tas_JJA.values, lon_model[lon_ind], SNR=SNR, seed=seed)
+        pseudo_value = tree.mxd(tas_JJA, lon_model[lon_ind], SNR=SNR, seed=seed)
 
         res = {
             'pseudo_time': pseudo_time,
