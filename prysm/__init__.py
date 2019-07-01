@@ -314,12 +314,14 @@ def forward(psm_name, lat_obs, lon_obs,
 
         tas_JJA, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=[6, 7, 8])
 
-        varves = lake.simpleVarveModel(tas_JJA, H, shape=shape, mean=mean, SNR=SNR, seed=seed)
+        varve_res = lake.simpleVarveModel(tas_JJA, H, shape=shape, mean=mean, SNR=SNR, seed=seed)
+        varves = varve_res['varves']
         pseudo_value = np.array(varves)[0]
 
         res = {
             'pseudo_time': pseudo_time,
             'pseudo_value': pseudo_value,
+            'varve_res': varve_res,
         }
 
         return res

@@ -29,7 +29,20 @@ def simpleVarveModel(signal, H, shape=1.5, mean=1, SNR=.25, seed=0):
     # combine the signal with the noise, based on the SNR
     varves = (gamSig*SNR + gamNoise*(1/SNR)) / (SNR + 1/SNR)
 
-    return varves
+    res = {
+        'signal': signal,
+        'gamSig': gamSig,
+        'fBm_ts': fBm_ts,
+        'gamNoise': gamNoise,
+        'varves': varves,
+        'H': H,
+        'shape': shape,
+        'mean': mean,
+        'SNR': SNR,
+        'seed': seed,
+    }
+
+    return res
 
 
 def gammify(X, shape=1.5, mean=1, jitter=False, seed=0):
