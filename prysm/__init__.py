@@ -166,6 +166,7 @@ def forward(psm_name, lat_obs, lon_obs,
             raise TypeError
 
         nproc = psm_params_dict['nproc']
+        alt_diff = psm_params_dict['alt_diff']
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
@@ -177,7 +178,7 @@ def forward(psm_name, lat_obs, lon_obs,
         pr_ann, year_int = LMRt.utils.annualize_var(pr_sub, time_model)
 
         # sensor model
-        d18O_ice = icecore.ice_sensor(time_model, d18Opr, pr)
+        d18O_ice = icecore.ice_sensor(time_model, d18Opr, pr, alt_diff=alt_diff)
         # diffuse model
         ice_diffused = icecore.ice_archive(d18O_ice[:, lat_ind, lon_ind], pr_ann, tas_ann, psl_ann, nproc=nproc)
 
@@ -408,6 +409,7 @@ def forward(psm_name, lat_obs, lon_obs,
 
         # for ice.d18O
         'nproc': 8,
+        'alt_diff': 0,
 
         # for vslite
         'T1': 8,
