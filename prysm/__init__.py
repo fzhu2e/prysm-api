@@ -22,7 +22,7 @@ from scipy.stats.mstats import mquantiles
 def forward(psm_name, lat_obs, lon_obs,
             lat_model, lon_model, time_model,
             prior_vars, elev_obs=None, elev_model=None,
-            latlon_search_mode='latlon',
+            latlon_search_mode=None,
             latlon_ind_dict=None, record_id=None,
             verbose=False, **psm_params):
 
@@ -166,7 +166,10 @@ def forward(psm_name, lat_obs, lon_obs,
             raise TypeError
 
         nproc = psm_params_dict['nproc']
-        alt_diff = psm_params_dict['alt_diff']
+        if elev_obs is not None and elev_model is not None:
+            alt_diff = elev_obs - elev_model[lat_ind, lon_ind]
+            if verbose:
+                print(f'PRYSM >>> elev_obs: {elev_obs:.2f}, elev_model: {elev_model[lat_ind, lon_ind]:.2f}')
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
@@ -409,7 +412,6 @@ def forward(psm_name, lat_obs, lon_obs,
 
         # for ice.d18O
         'nproc': 8,
-        'alt_diff': 0,
 
         # for vslite
         'T1': 8,
@@ -451,6 +453,10 @@ def forward(psm_name, lat_obs, lon_obs,
     psm_params_dict.update(psm_params)
 
     if latlon_ind_dict is None:
+        if latlon_search_mode is None and len(np.shape(lat_model)) == 1:
+            latlon_search_mode = 'latlon'
+        else:
+            latlon_search_mode = 'mesh'
         lat_ind, lon_ind = LMRt.utils.find_closest_loc(lat_model, lon_model, lat_obs, lon_obs, mode=latlon_search_mode)
     else:
         # load precalculated lat/lon indices
