@@ -291,7 +291,7 @@ def ice_archive(d18Oice, pr_ann, tas_ann, psl_ann, nproc=8):
 
     zp = np.arange(-100, 100, dz)
     if (len(zp) >= 0.5*len(z)):
-        print("Warning: convolution kernal length (zp) is approaching that of half the length of timeseries. Kernal being clipped.")
+        print("Warning: convolution kernel length (zp) is approaching that of half the length of timeseries. Kernel being clipped.")
         bound = 0.20*len(z)*dz
         zp = np.arange(-bound, bound, dz)
 
