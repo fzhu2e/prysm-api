@@ -172,6 +172,7 @@ def forward(psm_name, lat_obs, lon_obs,
                 print(f'PRYSM >>> elev_obs: {elev_obs:.2f}, elev_model: {elev_model[lat_ind, lon_ind]:.2f}')
 
         tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        tas_sub += alt_diff*(-6/1000)  # bias correction for elevation difference
         pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
         psl_sub = np.asarray(psl[:, lat_ind, lon_ind])
 
