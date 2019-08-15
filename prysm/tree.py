@@ -247,8 +247,8 @@ def mxd(T_JJA, lon, SNR=1, seed=0):
 
     random.seed(seed)
     signal = alpha * T_JJA
-    sig_var = np.var(signal)
-    noise_var = sig_var / SNR
-    noise = np.random.normal(0, np.sqrt(noise_var), size=np.size(T_JJA))
+    sig_std = np.nanstd(signal)
+    noise_std = sig_std / SNR
+    noise = np.random.normal(0, noise_std, size=np.size(T_JJA))
     pseudo_value = signal + noise
     return pseudo_value
