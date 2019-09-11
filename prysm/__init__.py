@@ -56,8 +56,8 @@ def forward(psm_name, lat_obs, lon_obs,
 
     '''
     def run_psm_for_coral_d18O():
-        sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
-        sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
+        sst = np.array(prior_vars_dict['sst']) - 273.15  # convert to degC
+        sst_sub = np.array(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
             sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
@@ -70,7 +70,7 @@ def forward(psm_name, lat_obs, lon_obs,
 
         sss = prior_vars_dict['sss']
         if sss is not None:
-            sss_sub = np.asarray(sss[:, lat_ind, lon_ind])
+            sss_sub = np.array(sss[:, lat_ind, lon_ind])
             if np.all(np.isnan(sss_sub)):
                 print(f'PRYSM >>> sss all nan; searching for nearest not nan ...')
                 sss_sub, lat_fix, lon_fix = search_nearest_not_nan(sss, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
@@ -85,7 +85,7 @@ def forward(psm_name, lat_obs, lon_obs,
 
         d18Osw = prior_vars_dict['d18Osw']
         if d18Osw is not None:
-            d18Osw_sub = np.asarray(d18Osw[:, lat_ind, lon_ind])
+            d18Osw_sub = np.array(d18Osw[:, lat_ind, lon_ind])
             if np.all(np.isnan(d18Osw_sub)):
                 print(f'PRYSM >>> d18Osw all nan; searching for nearest not nan ...')
                 d18Osw_sub, lat_fix, lon_fix = search_nearest_not_nan(d18Osw, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
@@ -124,12 +124,12 @@ def forward(psm_name, lat_obs, lon_obs,
         return res
 
     def run_psm_for_coral_SrCa():
-        sst = np.asarray(prior_vars_dict['sst']) - 273.15  # convert to degC
+        sst = np.array(prior_vars_dict['sst']) - 273.15  # convert to degC
         a = psm_params_dict['a']
         b = psm_params_dict['b']
         seed = psm_params_dict['seed']
 
-        sst_sub = np.asarray(sst[:, lat_ind, lon_ind])
+        sst_sub = np.array(sst[:, lat_ind, lon_ind])
         if np.all(np.isnan(sst_sub)):
             print(f'PRYSM >>> sst all nan; searching for nearest not nan ...')
             sst_sub, lat_fix, lon_fix = search_nearest_not_nan(sst, lat_ind, lon_ind, distance=psm_params_dict['search_dist'])
@@ -165,16 +165,18 @@ def forward(psm_name, lat_obs, lon_obs,
         if tas is None or pr is None or psl is None or d18Opr is None:
             raise TypeError
 
+        tas_sub = np.array(tas[:, lat_ind, lon_ind])
         nproc = psm_params_dict['nproc']
         if elev_obs is not None and elev_model is not None:
             alt_diff = elev_obs - elev_model[lat_ind, lon_ind]
+            tas_sub_old = np.copy(tas_sub)
+            tas_sub += alt_diff*(-6/1000)  # bias correction for elevation difference
             if verbose:
                 print(f'PRYSM >>> elev_obs: {elev_obs:.2f}, elev_model: {elev_model[lat_ind, lon_ind]:.2f}')
+                print(f'PRYSM >>> mean(tas): {np.mean(tas_sub_old)} -> {np.mean(tas_sub)}')
 
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
-        tas_sub += alt_diff*(-6/1000)  # bias correction for elevation difference
-        pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
-        psl_sub = np.asarray(psl[:, lat_ind, lon_ind])
+        pr_sub = np.array(pr[:, lat_ind, lon_ind])
+        psl_sub = np.array(psl[:, lat_ind, lon_ind])
 
         # annualize the data
         tas_ann, year_int = LMRt.utils.annualize_var(tas_sub, time_model)
@@ -231,8 +233,8 @@ def forward(psm_name, lat_obs, lon_obs,
         nyr = eyear - syear + 1
         phi = lat_obs
 
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
-        pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
+        tas_sub = np.array(tas[:, lat_ind, lon_ind])
+        pr_sub = np.array(pr[:, lat_ind, lon_ind])
 
         if bias_correction:
             pr_sub_old = np.copy(pr_sub)
@@ -288,7 +290,7 @@ def forward(psm_name, lat_obs, lon_obs,
         if tas is None:
             raise TypeError
 
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        tas_sub = np.array(tas[:, lat_ind, lon_ind])
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub):.2f}, std={np.nanstd(tas_sub)}')
 
@@ -313,7 +315,7 @@ def forward(psm_name, lat_obs, lon_obs,
         if tas is None:
             raise TypeError
 
-        tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+        tas_sub = np.array(tas[:, lat_ind, lon_ind])
         if verbose:
             print(f'PRYSM >>> tas: m={np.nanmean(tas_sub)-273.15:.2f}, std={np.nanstd(tas_sub)}')
 
@@ -338,7 +340,7 @@ def forward(psm_name, lat_obs, lon_obs,
         else:
             avgMonths = psm_params_dict['Seasonality']
             tas = prior_vars_dict['tas']
-            tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+            tas_sub = np.array(tas[:, lat_ind, lon_ind])
             tas_ann, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=avgMonths)
 
             slope = psm_params_dict['slope']
@@ -359,9 +361,9 @@ def forward(psm_name, lat_obs, lon_obs,
             avgMonths_T, avgMonths_P  = psm_params_dict['Seasonality']
             tas = prior_vars_dict['tas']
             pr = prior_vars_dict['pr']
-            tas_sub = np.asarray(tas[:, lat_ind, lon_ind])
+            tas_sub = np.array(tas[:, lat_ind, lon_ind])
             tas_ann, pseudo_time = LMRt.utils.seasonal_var(tas_sub, time_model, avgMonths=avgMonths_T)
-            pr_sub = np.asarray(pr[:, lat_ind, lon_ind])
+            pr_sub = np.array(pr[:, lat_ind, lon_ind])
             pr_ann, pseudo_time = LMRt.utils.seasonal_var(pr_sub, time_model, avgMonths=avgMonths_P)
 
             slope_temperature = psm_params_dict['slope_temperature']
@@ -465,9 +467,9 @@ def forward(psm_name, lat_obs, lon_obs,
 
     if verbose:
         if len(np.shape(lat_model)) == 1:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f})')
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind]:.2f}, {lon_model[lon_ind]:.2f}); lat_ind: {lat_ind}, lon_ind: {lon_ind}')
         elif len(np.shape(lat_model)) == 2:
-            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f})')
+            print(f'PRYSM >>> Target: ({lat_obs}, {lon_obs}); Found: ({lat_model[lat_ind, lon_ind]:.2f}, {lon_model[lat_ind, lon_ind]:.2f}); lat_ind: {lat_ind}, lon_ind: {lon_ind}')
 
     psm_func = {
         'prysm.coral.d18O': run_psm_for_coral_d18O,
@@ -501,13 +503,13 @@ def search_nearest_not_nan(field, lat_ind, lon_ind, distance=3):
         lon_fix_list.append(lon_fix)
         fix_sum.append(np.abs(lat_fix)+np.abs(lon_fix))
 
-    lat_fix_list = np.asarray(lat_fix_list)
-    lon_fix_list = np.asarray(lon_fix_list)
+    lat_fix_list = np.array(lat_fix_list)
+    lon_fix_list = np.array(lon_fix_list)
 
     sort_i = np.argsort(fix_sum)
 
     for lat_fix, lon_fix in zip(lat_fix_list[sort_i], lon_fix_list[sort_i]):
-        target = np.asarray(field[:, lat_ind+lat_fix, lon_ind+lon_fix])
+        target = np.array(field[:, lat_ind+lat_fix, lon_ind+lon_fix])
         if np.all(np.isnan(target)):
             continue
         else:

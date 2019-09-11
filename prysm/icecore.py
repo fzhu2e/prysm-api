@@ -267,7 +267,7 @@ def ice_archive(d18Oice, pr_ann, tas_ann, psl_ann, nproc=8):
     sigma_sqrd = integrate.cumtrapz(sigma_sqrd_dummy)
     diffusion_array = diffusion[0]
     diffusion_array = diffusion_array[diffusion_array < len(sigma_sqrd)]  # fzhu: to avoid the boundary index error
-    diffusion = np.asarray(diffusion_array)
+    diffusion = np.array(diffusion_array)
 
     #  rho=rho[0:-1] # modified by fzhu to fix inconsistency of array size
     #  sigma=np.zeros((len(rho)+1)) # modified by fzhu to fix inconsistency of array size
@@ -326,7 +326,7 @@ def ice_archive(d18Oice, pr_ann, tas_ann, psl_ann, nproc=8):
             return diffused[i]
 
         res = Pool(nproc).map(conv, sigma, range(len(sigma)))
-        diffused_final[:len(res)] = np.asarray(res)
+        diffused_final[:len(res)] = np.array(res)
 
     #  print('for loop: {:0.2f} s'.format(time.time()-start_time))
 
