@@ -240,13 +240,9 @@ def mxd(T_JJA, lon, SNR=1, seed=0):
     Returns:
         pseudo_value (array): pseudoproxy value
     '''
-    if lon < 180:
-        alpha = 0.8
-    else:
-        alpha = 0.1
 
     random.seed(seed)
-    signal = alpha * T_JJA
+    signal = T_JJA
     sig_std = np.nanstd(signal)
     noise_std = sig_std / SNR
     noise = np.random.normal(0, noise_std, size=np.size(T_JJA))

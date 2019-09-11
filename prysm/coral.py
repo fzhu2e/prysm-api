@@ -135,9 +135,9 @@ def sensor_SrCa(sst_degC, b=10.553, a=None, seed=0):
     if a is None:
         mu = -0.06
         std = 0.01
-        b = norm.rvs(loc=mu, scale=std, random_state=seed)
+        a = norm.rvs(loc=mu, scale=std, random_state=seed)
 
-    SrCa = a + b*sst_degC
+    SrCa = a*sst_degC + b
 
     return SrCa
 
