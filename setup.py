@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='prysm-api',
-    version='0.5.0',
+    version='0.5.1',
     description="The API for PRoxY System Modeling (PRYSM)",
     long_description=long_description,
     long_description_content_type="text/markdown",
